@@ -757,52 +757,47 @@ function App() {
         </div>
 
         {/* Main Action Cards */}
-        {isConnected && (
-          <>
-            <div className="card action-card">
-              <div className="action-content">
-                <div className="action-text">
-                  <h2>📈 ETH Price History</h2>
-                  <p className="subtitle">
-                    Get 24-hour ETH price history with OHLC data from CoinGecko
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setDataType("eth");
-                    openPaymentModal();
-                  }}
-                  disabled={loading}
-                  className="button button-large"
-                >
-                  📊 Get ETH Data
-                </button>
-              </div>
+        <div className="card action-card">
+          <div className="action-content">
+            <div className="action-text">
+              <h2>📈 ETH Price History</h2>
+              <p className="subtitle">
+                Get 24-hour ETH price history with OHLC data from CoinGecko
+              </p>
             </div>
+            <button
+              onClick={() => {
+                setDataType("eth");
+                openPaymentModal();
+              }}
+              disabled={loading}
+              className="button button-large"
+            >
+              📊 Get ETH Data
+            </button>
+          </div>
+        </div>
 
-            <div className="card action-card">
-              <div className="action-content">
-                <div className="action-text">
-                  <h2>₿ BTC Price History</h2>
-                  <p className="subtitle">
-                    Get 24-hour BTC price history with OHLC data - Only 0.01
-                    USDC!
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setDataType("btc");
-                    setShowPaymentModal(true);
-                  }}
-                  disabled={loading}
-                  className="button button-large"
-                >
-                  ₿ Get BTC Data
-                </button>
-              </div>
+        <div className="card action-card">
+          <div className="action-content">
+            <div className="action-text">
+              <h2>₿ BTC Price History</h2>
+              <p className="subtitle">
+                Get 24-hour BTC price history with OHLC data - Only 0.01 USDC!
+              </p>
             </div>
-          </>
-        )}
+            <button
+              onClick={() => {
+                setDataType("btc");
+                openPaymentModal();
+              }}
+              disabled={loading}
+              className="button button-large"
+            >
+              ₿ Get BTC Data
+            </button>
+          </div>
+        </div>
 
         {/* Payment Modal */}
         {showPaymentModal && (
