@@ -10,6 +10,17 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Global error handlers to prevent crashes
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  // Don't exit the process, just log the error
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit the process, just log the error
+});
+
 // Basic middleware
 app.use(cors());
 app.use(express.json());
@@ -252,20 +263,22 @@ app.get("/api/balances/:address", async (req: Request, res: Response) => {
     // Calculate USD values and sort by value
     const tokensWithValue = balances
       .map((balance: any) => {
-        const rawAmount = balance.amount || "0";
-        const decimals = balance.decimals || 18;
-
-        // Convert wei to human-readable format
-        let amount: number;
         try {
-          const weiBigInt = BigInt(rawAmount.toString().split(".")[0]);
-          amount = Number(weiBigInt) / Math.pow(10, decimals);
-        } catch (e) {
-          amount = parseFloat(rawAmount) / Math.pow(10, decimals);
-        }
+          const rawAmount = balance.amount || "0";
+          const decimals = balance.decimals || 18;
 
-        const price = parseFloat(balance.price_usd || "0");
-        const valueUsd = amount * price;
+          // Convert wei to human-readable format
+          let amount: number;
+          try {
+            const weiBigInt = BigInt(rawAmount.toString().split(".")[0]);
+            amount = Number(weiBigInt) / Math.pow(10, decimals);
+          } catch (e) {
+            console.warn(`Failed to parse amount for token ${balance.symbol}:`, e);
+            amount = parseFloat(rawAmount) / Math.pow(10, decimals);
+          }
+
+          const price = parseFloat(balance.price_usd || "0");
+          const valueUsd = amount * price;
 
         // Format balance to remove trailing zeros
         let formattedBalance: string;
@@ -277,16 +290,20 @@ app.get("/api/balances/:address", async (req: Request, res: Response) => {
           formattedBalance = amount.toFixed(2).replace(/\.?0+$/, "");
         }
 
-        return {
-          address: balance.address,
-          symbol: balance.symbol || "UNKNOWN",
-          name: balance.name || "Unknown Token",
-          decimals: decimals,
-          balance: formattedBalance,
-          valueUsd: valueUsd,
-        };
+          return {
+            address: balance.address,
+            symbol: balance.symbol || "UNKNOWN",
+            name: balance.name || "Unknown Token",
+            decimals: decimals,
+            balance: formattedBalance,
+            valueUsd: valueUsd,
+          };
+        } catch (error) {
+          console.warn(`Error processing balance for token ${balance?.symbol}:`, error);
+          return null;
+        }
       })
-      .filter((token: any) => token.valueUsd > 0)
+      .filter((token: any) => token !== null && token.valueUsd > 0)
       .sort((a: any, b: any) => b.valueUsd - a.valueUsd)
       .slice(0, 5); // Top 5
 
@@ -330,6 +347,11 @@ async function fetchEthPriceHistory() {
 
     const data = (await response.json()) as number[][];
 
+    // Validate data
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error("Invalid or empty price data from CoinGecko");
+    }
+
     // Data format: [[timestamp, open, high, low, close], ...]
     const priceHistory = data.map((item: number[]) => ({
       timestamp: item[0],
@@ -341,6 +363,11 @@ async function fetchEthPriceHistory() {
 
     // Calculate statistics
     const prices = priceHistory.map((p: any) => p.close);
+
+    if (prices.length === 0) {
+      throw new Error("No price data available");
+    }
+
     const currentPrice = prices[prices.length - 1];
     const dayStartPrice = prices[0];
     const highPrice = Math.max(...prices);
@@ -391,6 +418,11 @@ async function fetchBtcPriceHistory() {
 
     const data = (await response.json()) as number[][];
 
+    // Validate data
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error("Invalid or empty price data from CoinGecko");
+    }
+
     // Data format: [[timestamp, open, high, low, close], ...]
     const priceHistory = data.map((item: number[]) => ({
       timestamp: item[0],
@@ -402,6 +434,11 @@ async function fetchBtcPriceHistory() {
 
     // Calculate statistics
     const prices = priceHistory.map((p: any) => p.close);
+
+    if (prices.length === 0) {
+      throw new Error("No price data available");
+    }
+
     const currentPrice = prices[prices.length - 1];
     const dayStartPrice = prices[0];
     const highPrice = Math.max(...prices);
@@ -426,6 +463,20 @@ async function fetchBtcPriceHistory() {
     throw error;
   }
 }
+
+// Global Express error handler (must be last middleware)
+app.use((err: any, req: Request, res: Response, next: any) => {
+  console.error('❌ Express error handler caught:', err);
+
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  res.status(500).json({
+    success: false,
+    error: err.message || 'Internal server error',
+  });
+});
 
 // Start server
 app.listen(PORT, () => {
