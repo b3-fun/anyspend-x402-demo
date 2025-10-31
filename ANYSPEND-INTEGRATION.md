@@ -42,16 +42,16 @@ This fullstack application demonstrates how to use the x402 payment protocol wit
 
 ```
 ┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
-│  React Client   │────────▶│  Express Server │────────▶│ Remote          │
-│  (Browser)      │         │  (Your Backend) │         │ Facilitator     │
-│                 │         │                 │         │ (x402.org)      │
+│  React Client   │────────▶│  Express Server │────────▶│  AnySpend       │
+│  (Browser)      │         │  (Your Backend) │         │  Facilitator    │
+│                 │         │                 │         │ (anyspend.com)  │
 │ • Creates       │         │ • Receives      │         │                 │
-│   payment       │         │   X-PAYMENT     │         │ • Verifies      │
-│   header        │         │   header        │         │   signatures    │
-│ • Signs with    │         │ • Calls remote  │         │ • Checks        │
-│   private key   │         │   facilitator   │         │   balances      │
-│ • Auto-detects  │         │ • No blockchain │         │ • Settles       │
-│   signature     │         │   node needed   │         │   transactions  │
+│   payment with  │         │   X-PAYMENT     │         │ • Verifies      │
+│   ANY token     │         │   header        │         │   signatures    │
+│ • Signs with    │         │ • Calls remote  │         │ • Swaps tokens  │
+│   private key   │         │   facilitator   │         │   to USDC       │
+│ • Auto-detects  │         │ • No blockchain │         │ • Settles to    │
+│   signature     │         │   node needed   │         │   seller        │
 │   type          │         │                 │         │                 │
 └─────────────────┘         └─────────────────┘         └─────────────────┘
 ```
@@ -63,7 +63,7 @@ A remote facilitator is a service that handles blockchain operations on behalf o
 - **Verification**: Fast off-chain validation of payment signatures and balances
 - **Settlement**: On-chain execution of approved transactions
 - **No Infrastructure**: You don't need to run blockchain nodes or manage keys
-- **Public & Free**: The default facilitator at `https://facilitator.x402.org` is open and free to use
+- **Production Ready**: The AnySpend facilitator at `https://mainnet.anyspend.com/x402` accepts any token and pays out in USDC
 
 ---
 
@@ -234,8 +234,8 @@ Edit `apps/server/.env`:
 ```env
 PORT=3001
 
-# Use the public remote facilitator (no auth required)
-FACILITATOR_URL=https://facilitator.x402.org
+# Use the AnySpend facilitator (accepts any token, pays out in USDC)
+FACILITATOR_URL=https://mainnet.anyspend.com/x402
 
 # Or use your own facilitator
 # FACILITATOR_URL=https://your-facilitator.example.com
@@ -306,7 +306,7 @@ app.use(express.json());
 const PAYTO_ADDRESS = process.env.PAYTO_ADDRESS as Address;
 const NETWORK = process.env.NETWORK || "base-sepolia";
 const PAYMENT_AMOUNT_USD = process.env.PAYMENT_AMOUNT_USD || "$0.001";
-const FACILITATOR_URL = process.env.FACILITATOR_URL || "https://facilitator.x402.org";
+const FACILITATOR_URL = process.env.FACILITATOR_URL || "https://mainnet.anyspend.com/x402";
 
 // Apply payment middleware to protected routes
 app.use(
@@ -660,7 +660,7 @@ Health check endpoint (free, no payment required)
 ```json
 {
   "status": "healthy",
-  "facilitator": "https://facilitator.x402.org",
+  "facilitator": "https://mainnet.anyspend.com/x402",
   "network": "base-sepolia"
 }
 ```
@@ -883,7 +883,7 @@ Core implementation files for signature type detection:
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `PORT` | No | `3001` | Server port |
-| `FACILITATOR_URL` | No | `https://facilitator.x402.org` | Remote facilitator URL |
+| `FACILITATOR_URL` | No | `https://mainnet.anyspend.com/x402` | AnySpend facilitator URL (accepts any token, pays out USDC) |
 | `NETWORK` | No | `base-sepolia` | Blockchain network |
 | `PAYMENT_AMOUNT_USD` | No | `$0.001` | Payment amount in USD |
 | `PAYTO_ADDRESS` | Yes | - | Address to receive payments |

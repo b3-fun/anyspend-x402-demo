@@ -1,40 +1,49 @@
-# AnySpend Fullstack Example
+# AnySpend x402 Fullstack Demo
 
-A complete fullstack application demonstrating how to use the x402 payment protocol with a **remote facilitator** for blockchain payment verification and settlement.
+A complete fullstack application demonstrating **AnySpend x402** - a payment protocol that lets customers pay with any token (ETH, DAI, any ERC-20) while sellers receive USDC. This demo uses a **remote facilitator** for blockchain payment verification, token swaps, and settlement.
 
 ## Architecture
 
 ```
 ┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
-│  React Client   │────────▶│  Express Server │────────▶│ Remote          │
-│  (Browser)      │         │  (Your Backend) │         │ Facilitator     │
-│                 │         │                 │         │ (x402.org)      │
+│  React Client   │────────▶│  Express Server │────────▶│  AnySpend       │
+│  (Browser)      │         │  (Your Backend) │         │  Facilitator    │
+│                 │         │                 │         │ (anyspend.com)  │
 │ • Creates       │         │ • Receives      │         │                 │
-│   payment       │         │   X-PAYMENT     │         │ • Verifies      │
-│   header        │         │   header        │         │   signatures    │
-│ • Signs with    │         │ • Calls remote  │         │ • Checks        │
-│   private key   │         │   facilitator   │         │   balances      │
-│ • Never sends   │         │ • No blockchain │         │ • Settles       │
-│   key to server │         │   node needed   │         │   transactions  │
+│   payment with  │         │   X-PAYMENT     │         │ • Verifies      │
+│   ANY token     │         │   header        │         │   signatures    │
+│ • Signs with    │         │ • Calls remote  │         │ • Swaps tokens  │
+│   private key   │         │   facilitator   │         │   to USDC       │
+│ • Never sends   │         │ • No blockchain │         │ • Settles to    │
+│   key to server │         │   node needed   │         │   seller        │
 └─────────────────┘         └─────────────────┘         └─────────────────┘
 ```
 
 ## Key Features
 
+- **Pay with Any Token**: Customers can pay with ETH, DAI, or any ERC-20 token across 19+ networks
+- **Receive Only USDC**: Sellers always receive payments in USDC regardless of customer's payment token
+- **Automatic Token Swaps**: AnySpend facilitator handles all token conversions seamlessly
 - **No Blockchain Infrastructure**: Server uses remote facilitator instead of running blockchain nodes
 - **Gasless Payments**: Uses ERC-2612 permits for gas-free token approvals
 - **Fast Verification**: Payment verification happens off-chain via remote facilitator
-- **On-Chain Settlement**: Facilitator handles actual blockchain transactions
+- **On-Chain Settlement**: Facilitator handles actual blockchain transactions and token swaps
 - **Secure**: Private keys never leave the browser
 
-## What is a Remote Facilitator?
+## What is AnySpend?
 
-A remote facilitator is a service that handles blockchain operations on behalf of your application:
+AnySpend is a B3-maintained fork of Coinbase's x402 payment protocol that enables universal cryptocurrency payments over HTTP. The key innovation: **customers pay with any token, sellers receive USDC**.
 
+### How the AnySpend Facilitator Works
+
+The AnySpend facilitator handles all blockchain complexity on behalf of your application:
+
+- **Multi-Token Support**: Accepts payments in ETH, DAI, or any ERC-20 token across 19+ networks
+- **Automatic Conversion**: Swaps customer's payment token to USDC seamlessly
 - **Verification**: Fast off-chain validation of payment signatures and balances
 - **Settlement**: On-chain execution of approved transactions
 - **No Infrastructure**: You don't need to run blockchain nodes or manage keys
-- **Public & Free**: The default facilitator at `https://facilitator.x402.org` is open and free to use
+- **Production Ready**: Use the mainnet facilitator at `https://mainnet.anyspend.com/x402`
 
 ## Project Structure
 
@@ -90,8 +99,8 @@ Edit `apps/server/.env`:
 ```env
 PORT=3001
 
-# Use the public remote facilitator (no auth required)
-FACILITATOR_URL=https://facilitator.x402.org
+# Use the AnySpend mainnet facilitator (accepts any token, pays out in USDC)
+FACILITATOR_URL=https://mainnet.anyspend.com/x402
 
 # Or use your own facilitator
 # FACILITATOR_URL=https://your-facilitator.example.com
@@ -153,22 +162,23 @@ pnpm dev:client
 
 1. **User enters private key** in the browser (never sent to server)
 2. **Initial request** to `/api/premium` receives `402 Payment Required`
-3. **Create payment header** using x402 client library
+3. **Create payment header** using AnySpend x402 client library (can pay with any token)
 4. **Retry request** with `X-PAYMENT` header containing signed permit
-5. **Receive premium content** after payment is verified and settled
+5. **AnySpend converts** customer's token to USDC automatically
+6. **Receive premium content** after payment is verified, swapped, and settled
 
 ### Server Flow (Express with Middleware)
 
-The `paymentMiddleware` from `x402-express` automatically handles the entire payment flow:
+The `paymentMiddleware` from `@b3dotfun/anyspend-x402` automatically handles the entire payment flow:
 
 1. **Receive request** without payment → middleware returns `402` with payment requirements
 2. **Receive request** with `X-PAYMENT` header → middleware decodes payment payload
-3. **Verify payment** → middleware calls remote facilitator (off-chain, fast)
+3. **Verify payment** → middleware calls AnySpend facilitator (off-chain, fast)
 4. **Execute route handler** → only if payment is valid
-5. **Settle payment** → middleware handles settlement via remote facilitator (on-chain)
+5. **Settle & convert payment** → middleware handles token swap and settlement via AnySpend (on-chain)
 6. **Return response** → middleware adds `X-PAYMENT-RESPONSE` header with settlement details
 
-Your route handler only runs after payment is verified and settled!
+Your route handler only runs after payment is verified and settled! Seller receives USDC regardless of customer's payment token.
 
 ### Code Snippets
 
@@ -196,15 +206,15 @@ const response = await fetch('/api/premium', {
 
 **Server: Using Payment Middleware**
 ```typescript
-import { paymentMiddleware } from 'x402-express';
+import { paymentMiddleware } from '@b3dotfun/anyspend-x402/express';
 
 // Apply payment middleware to protected routes
 app.use(
   paymentMiddleware(
-    "0xYourAddress", // your receiving wallet address
+    "0xYourAddress", // your receiving wallet address (gets USDC)
     {
       "POST /api/premium": {
-        price: "$0.001",  // USDC amount in dollars
+        price: "$0.001",  // USDC amount (customer can pay with any token)
         network: "base-sepolia",
         config: {
           description: "Access to premium market analysis data",
@@ -213,12 +223,12 @@ app.use(
       },
     },
     {
-      url: "https://facilitator.x402.org", // remote facilitator
+      url: "https://mainnet.anyspend.com/x402", // AnySpend facilitator
     },
   ),
 );
 
-// Your route handler - payment already verified and settled by middleware
+// Your route handler - payment already verified, swapped, and settled by middleware
 app.post("/api/premium", (req, res) => {
   res.json({ data: generatePremiumData() });
 });
@@ -226,27 +236,27 @@ app.post("/api/premium", (req, res) => {
 
 **Alternative: Manual Verification (Not Recommended)**
 
-If you need more control, you can manually use the facilitator:
+If you need more control, you can manually use the AnySpend facilitator:
 
 ```typescript
-import { useFacilitator } from 'x402/verify';
-import { decodePayment } from 'x402/schemes/exact/evm';
+import { useFacilitator } from '@b3dotfun/anyspend-x402/verify';
+import { decodePayment } from '@b3dotfun/anyspend-x402/schemes/exact/evm';
 
-// Configure remote facilitator
+// Configure AnySpend facilitator
 const facilitator = useFacilitator({
-  url: 'https://facilitator.x402.org'
+  url: 'https://mainnet.anyspend.com/x402'
 });
 
-// Decode payment
+// Decode payment (customer can pay with any token)
 const paymentPayload = decodePayment(paymentHeader);
 
-// Verify with remote facilitator (fast, off-chain)
+// Verify with AnySpend facilitator (fast, off-chain)
 const verifyResult = await facilitator.verify(
   paymentPayload,
   PAYMENT_REQUIREMENTS
 );
 
-// Settle with remote facilitator (on-chain)
+// Settle with AnySpend facilitator (on-chain, swaps to USDC)
 const settleResult = await facilitator.settle(
   paymentPayload,
   PAYMENT_REQUIREMENTS
@@ -262,7 +272,7 @@ Health check endpoint.
 ```json
 {
   "status": "healthy",
-  "facilitator": "https://facilitator.x402.org",
+  "facilitator": "https://mainnet.anyspend.com/x402",
   "network": "base-sepolia"
 }
 ```
@@ -311,10 +321,10 @@ This builds both apps:
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `PORT` | No | `3001` | Server port |
-| `FACILITATOR_URL` | No | `https://facilitator.x402.org` | Remote facilitator URL |
+| `FACILITATOR_URL` | No | `https://mainnet.anyspend.com/x402` | AnySpend facilitator URL |
 | `NETWORK` | No | `base-sepolia` | Blockchain network |
-| `PAYMENT_AMOUNT_USD` | No | `$0.001` | Payment amount in USD |
-| `PAYTO_ADDRESS` | Yes | - | Address to receive payments |
+| `PAYMENT_AMOUNT_USD` | No | `$0.001` | Payment amount in USD (you receive USDC) |
+| `PAYTO_ADDRESS` | Yes | - | Address to receive USDC payments |
 
 ### Client
 
@@ -331,9 +341,10 @@ This builds both apps:
 
 ## Learn More
 
+- [AnySpend x402 GitHub](https://github.com/b3-fun/anyspend-x402)
 - [x402 Documentation](https://x402.org/docs)
 - [ERC-2612 Permit Standard](https://eips.ethereum.org/EIPS/eip-2612)
-- [Remote Facilitator API](https://x402.org/docs/facilitator)
+- [B3 Fun](https://b3.fun)
 
 ## License
 

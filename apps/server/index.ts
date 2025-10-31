@@ -31,7 +31,7 @@ const PAYTO_ADDRESS =
 const NETWORK = (process.env.NETWORK as "base-sepolia" | "base") || "base";
 const PAYMENT_AMOUNT_USD = process.env.PAYMENT_AMOUNT_USD || "100000000"; // Default 100 USDC (100 * 10^6)
 const FACILITATOR_URL = (process.env.FACILITATOR_URL ||
-  "https://facilitator.x402.org") as `${string}://${string}`;
+  "https://mainnet.anyspend.com/x402") as `${string}://${string}`;
 
 // API Keys from environment
 if (!process.env.COINGECKO_API_KEY) {
