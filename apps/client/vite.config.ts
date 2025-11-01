@@ -9,7 +9,8 @@ export default defineConfig({
   },
   preview: {
     allowedHosts: [
-      'anyspend-x402-client-production.up.railway.app'
+      'anyspend-x402-client-production.up.railway.app',
+      'x402-demo.anyspend.com'
     ]
   }
 });
