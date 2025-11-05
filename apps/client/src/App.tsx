@@ -177,45 +177,20 @@ function App() {
               );
             });
 
-            // Check compatibility for each token
-            const compatClient = new TokenCompatClient();
-            const compatibilityChecks = await Promise.all(
-              filteredTokens.map(async (token: any) => {
-                try {
-                  const chainIdNum = Number(selectedChain);
-                  const supportsPermit = await compatClient.supportsEip2612(
-                    chainIdNum,
-                    token.address,
-                  );
-                  return { token, supportsPermit };
-                } catch (err) {
-                  console.error(
-                    `Failed to check compatibility for ${token.symbol}:`,
-                    err,
-                  );
-                  // If we can't check, exclude the token to be safe
-                  return { token, supportsPermit: false };
-                }
-              }),
-            );
-
-            // Filter to only compatible tokens (EIP-2612 support)
-            const compatibleTokens = compatibilityChecks
-              .filter((result) => result.supportsPermit)
-              .map((result) => result.token);
-
+            // TEMPORARY: Skip compatibility check due to TokenCompatClient fetch binding issue
+            // TODO: Fix this when the library is updated or implement custom EIP-2612 check
             console.log(
-              `Filtered to ${compatibleTokens.length} compatible tokens out of ${filteredTokens.length} total`,
+              `Using ${filteredTokens.length} tokens (compatibility check temporarily disabled)`,
             );
 
             // Map balances by token address
-            compatibleTokens.forEach((token: any) => {
+            filteredTokens.forEach((token: any) => {
               const tokenAddress = token.address.toLowerCase();
               balances[tokenAddress] = token.balance;
             });
 
             setTokenBalances(balances);
-            setUserTokens(compatibleTokens);
+            setUserTokens(filteredTokens);
           }
         } else {
           console.error("Balance fetch failed:", response.status);
