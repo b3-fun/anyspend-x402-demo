@@ -98,7 +98,7 @@ function App() {
     const fetchBalancesForAllChains = async () => {
       if (!address) return;
 
-      const chains = ["1", "8453", "137", "42161"]; // Ethereum, Base, Polygon, Arbitrum
+      const chains = ["1", "8453", "137", "42161", "56"]; // Ethereum, Base, Polygon, Arbitrum, BSC
       const chainsWithTokens: string[] = [];
 
       try {
