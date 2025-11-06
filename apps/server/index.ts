@@ -11,13 +11,13 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Global error handlers to prevent crashes
-process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
+process.on("uncaughtException", error => {
+  console.error("❌ Uncaught Exception:", error);
   // Don't exit the process, just log the error
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
   // Don't exit the process, just log the error
 });
 
@@ -280,15 +280,15 @@ app.get("/api/balances/:address", async (req: Request, res: Response) => {
           const price = parseFloat(balance.price_usd || "0");
           const valueUsd = amount * price;
 
-        // Format balance to remove trailing zeros
-        let formattedBalance: string;
-        if (amount > 0 && amount < 0.01) {
-          formattedBalance = amount.toFixed(6).replace(/\.?0+$/, "");
-        } else if (amount >= 0.01 && amount < 1) {
-          formattedBalance = amount.toFixed(4).replace(/\.?0+$/, "");
-        } else {
-          formattedBalance = amount.toFixed(2).replace(/\.?0+$/, "");
-        }
+          // Format balance to remove trailing zeros
+          let formattedBalance: string;
+          if (amount > 0 && amount < 0.01) {
+            formattedBalance = amount.toFixed(6).replace(/\.?0+$/, "");
+          } else if (amount >= 0.01 && amount < 1) {
+            formattedBalance = amount.toFixed(4).replace(/\.?0+$/, "");
+          } else {
+            formattedBalance = amount.toFixed(2).replace(/\.?0+$/, "");
+          }
 
           return {
             address: balance.address,
@@ -466,7 +466,7 @@ async function fetchBtcPriceHistory() {
 
 // Global Express error handler (must be last middleware)
 app.use((err: any, req: Request, res: Response, next: any) => {
-  console.error('❌ Express error handler caught:', err);
+  console.error("❌ Express error handler caught:", err);
 
   if (res.headersSent) {
     return next(err);
@@ -474,7 +474,7 @@ app.use((err: any, req: Request, res: Response, next: any) => {
 
   res.status(500).json({
     success: false,
-    error: err.message || 'Internal server error',
+    error: err.message || "Internal server error",
   });
 });
 
