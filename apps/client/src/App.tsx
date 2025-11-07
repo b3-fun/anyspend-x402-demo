@@ -124,8 +124,8 @@ function App() {
         {networkType === "ETH" && <EvmWallet onDisconnect={handleNetworkChange} />}
         {networkType === "SOL" && <SolanaWallet onDisconnect={handleNetworkChange} />}
 
-        {/* Code Example Section */}
-        {networkType && (
+        {/* Code Example Section - Only show for EVM chains */}
+        {networkType === "ETH" && (
           <div className="code-example-section">
             <div className="code-example-header">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -242,11 +242,14 @@ main();`}</code>
               >
                 Anyspend-x402
               </a>{" "}
-              ⚡ Pay with any token, get instant access
+              {networkType === "ETH"
+                ? "⚡ Pay with any token, get instant access"
+                : "⚡ Pay with USDC on Solana, get instant access"}
             </p>
             <p style={{ marginTop: "0.5rem", fontSize: "0.8rem" }}>
-              🔒 Your keys never leave your wallet • 🌐 Works on any chain • ✨
-              Gas-efficient permits
+              {networkType === "ETH"
+                ? "🔒 Your keys never leave your wallet • 🌐 Works on any chain • ✨ Gas-efficient permits"
+                : "🔒 Your keys never leave your wallet • ◎ Native Solana integration • ⚡ Fast & cheap transactions"}
             </p>
           </div>
         )}
