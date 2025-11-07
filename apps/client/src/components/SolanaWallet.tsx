@@ -4,13 +4,13 @@
  * Demonstrates how to integrate Solana payments with the x402 protocol using browser wallet adapters.
  *
  * Key features:
- * - Connects to Solana wallets (Phantom) via wallet-adapter
- * - Creates a TransactionSigner compatible with @solana/kit
- * - Converts between @solana/web3.js v2 format (used by x402) and v1 VersionedTransaction (used by wallet adapters)
- * - Handles payment flow: sign -> verify -> settle
+ * - Connects to Solana wallets (Phantom) via @solana/wallet-adapter-react
+ * - Uses createSolanaSigner() to bridge wallet adapter with x402 library
+ * - Handles payment flow: sign → verify → settle
  * - Displays payment confirmation and transaction links
  *
  * @see https://docs.anyspend.com/x402 for protocol documentation
+ * @see ./createSolanaSigner.ts for the wallet adapter bridge implementation
  */
 
 import {
@@ -19,8 +19,8 @@ import {
 } from "@b3dotfun/anyspend-x402-fetch";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { VersionedTransaction } from "@solana/web3.js";
 import { useState } from "react";
+import { createSolanaSigner } from "./createSolanaSigner";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 const SOLANA_RPC_URL = "https://solana-rpc.publicnode.com";
@@ -38,10 +38,21 @@ interface PaymentInfo {
 }
 
 interface PremiumData {
-  message: string;
-  network: string;
-  paymentToken: string;
-  amount: string;
+  symbol: string;
+  name: string;
+  currentPrice: number;
+  priceChange: number;
+  priceChangePercent: string;
+  high24h: number;
+  low24h: number;
+  priceHistory: Array<{
+    timestamp: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+  }>;
+  dataPoints: number;
   timestamp: string;
 }
 
@@ -109,62 +120,12 @@ export function SolanaWallet({ onDisconnect }: SolanaWalletProps) {
       });
       addLog("🔧 Setting up payment-enabled fetch...");
 
-      /**
-       * Create a Solana TransactionSigner compatible with @solana/kit
-       *
-       * The x402 library expects a signer with:
-       * - address: string (wallet public key)
-       * - signTransactions: function that takes v2 transactions and returns signatures
-       *
-       * Transaction format (v2): { messageBytes: Uint8Array, signatures: Record<string, null>, lifetimeConstraint: {...} }
-       * Return format: [{ walletAddress: Uint8Array(64) }] - just the 64-byte signature
-       */
-      const solanaSigner: any = {
-        address: solanaPublicKey.toBase58(),
-        signTransactions: async (transactions: any[]) => {
-          addLog(`Signing ${transactions.length} transaction(s)...`);
-
-          // Convert v2 transactions to VersionedTransaction for wallet signing
-          const txsToSign = transactions.map((tx) => {
-            if (tx instanceof VersionedTransaction) {
-              return tx;
-            }
-
-            if (tx.messageBytes instanceof Uint8Array) {
-              // Construct a full transaction from messageBytes
-              // Format: [numSigs(1 byte), sig1(64 bytes), sig2(64 bytes), ..., message]
-              const numSignatures = Object.keys(tx.signatures || {}).length;
-              const signaturesLength = 1 + (numSignatures * 64);
-              const fullTx = new Uint8Array(signaturesLength + tx.messageBytes.length);
-
-              fullTx[0] = numSignatures;
-              fullTx.set(tx.messageBytes, signaturesLength);
-
-              return VersionedTransaction.deserialize(fullTx);
-            }
-
-            throw new Error("Unsupported transaction format");
-          });
-
-          // Sign transactions with wallet adapter
-          const signedTxs = await signAllTransactions!(txsToSign);
-
-          // Extract and return ONLY the signatures (not full serialized transaction)
-          return signedTxs.map((signedTx) => {
-            const signerIndex = signedTx.message.staticAccountKeys.findIndex(
-              key => key.toBase58() === solanaPublicKey.toBase58()
-            );
-
-            if (signerIndex === -1) {
-              throw new Error("Wallet address not found in transaction signers");
-            }
-
-            return {
-              [solanaPublicKey.toBase58()]: signedTx.signatures[signerIndex]
-            };
-          });
-        },
-      };
+      // Create a TransactionSigner adapter for the wallet
+      const solanaSigner = createSolanaSigner(
+        solanaPublicKey.toBase58(),
+        signAllTransactions!,
+        (count) => addLog(`Signing ${count} transaction(s)...`)
+      );
 
       // Wrap fetch with payment capability
       const fetchWithPayment = wrapFetchWithPayment(
@@ -273,7 +234,7 @@ export function SolanaWallet({ onDisconnect }: SolanaWalletProps) {
               className="logo"
             />
             <div className="logo-text">
-              <p className="subtitle">Premium data on Solana - Pay with USDC</p>
+              <p className="subtitle">SOL Price History - Pay with USDC</p>
             </div>
           </div>
           <div className="wallet-section">
@@ -303,9 +264,9 @@ export function SolanaWallet({ onDisconnect }: SolanaWalletProps) {
       <div className="card action-card">
         <div className="action-content">
           <div className="action-text">
-            <h2>◎ Solana Premium Data</h2>
+            <h2>◎ SOL Price History</h2>
             <p className="subtitle">
-              Access premium data on Solana - Pay with USDC (0.01 USDC)
+              Get 24-hour OHLCV data - Pay 0.01 USDC on Solana
             </p>
           </div>
           <button
@@ -426,34 +387,92 @@ export function SolanaWallet({ onDisconnect }: SolanaWalletProps) {
           </div>
         )}
 
-        {premiumData && (
+        {premiumData && premiumData.currentPrice !== undefined && (
           <div className="card content-card">
             <div className="content-header">
-              <h2>◎ Solana Premium Data</h2>
+              <h2>◎ {premiumData.name} Price Data</h2>
               <span className="badge">✨ PAID</span>
             </div>
 
             <div className="section">
-              <h3>🎉 Payment Success!</h3>
+              <h3>📊 24-Hour Price Analysis</h3>
               <div className="analysis-grid">
                 <div className="stat">
-                  <span className="stat-label">Message</span>
-                  <p className="stat-value">{premiumData.message}</p>
+                  <span className="stat-label">Current Price</span>
+                  <p className="stat-value">${premiumData.currentPrice?.toFixed(2) ?? 'N/A'}</p>
                 </div>
                 <div className="stat">
-                  <span className="stat-label">Network</span>
-                  <p className="stat-value">{premiumData.network}</p>
+                  <span className="stat-label">24h Change</span>
+                  <p className={`stat-value ${parseFloat(premiumData.priceChangePercent || '0') >= 0 ? 'positive' : 'negative'}`}>
+                    {parseFloat(premiumData.priceChangePercent || '0') >= 0 ? '▲' : '▼'} {premiumData.priceChangePercent}%
+                  </p>
                 </div>
                 <div className="stat">
-                  <span className="stat-label">Payment Token</span>
-                  <p className="stat-value">{premiumData.paymentToken}</p>
+                  <span className="stat-label">24h High</span>
+                  <p className="stat-value">${premiumData.high24h?.toFixed(2) ?? 'N/A'}</p>
                 </div>
                 <div className="stat">
-                  <span className="stat-label">Amount</span>
-                  <p className="stat-value">{premiumData.amount}</p>
+                  <span className="stat-label">24h Low</span>
+                  <p className="stat-value">${premiumData.low24h?.toFixed(2) ?? 'N/A'}</p>
+                </div>
+                <div className="stat">
+                  <span className="stat-label">Price Range</span>
+                  <p className="stat-value">
+                    ${((premiumData.high24h ?? 0) - (premiumData.low24h ?? 0)).toFixed(2)}
+                  </p>
+                </div>
+                <div className="stat">
+                  <span className="stat-label">Data Points</span>
+                  <p className="stat-value">{premiumData.dataPoints ?? 'N/A'} OHLC bars</p>
                 </div>
               </div>
             </div>
+
+            {premiumData.priceHistory && premiumData.priceHistory.length > 0 && (
+              <div className="section">
+                <h3>📈 Recent OHLC Data (Last 5 Periods)</h3>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    fontSize: '0.9rem',
+                    marginTop: '1rem'
+                  }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>Time</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>Open</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>High</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>Low</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>Close</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {premiumData.priceHistory.slice(-5).reverse().map((bar, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <td style={{ padding: '0.5rem' }}>
+                            {new Date(bar.timestamp).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>${bar.open.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', color: '#4ade80' }}>
+                            ${bar.high.toFixed(2)}
+                          </td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', color: '#f87171' }}>
+                            ${bar.low.toFixed(2)}
+                          </td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 600 }}>
+                            ${bar.close.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             <div className="timestamp">
               Data fetched at {new Date(premiumData.timestamp).toLocaleString()}

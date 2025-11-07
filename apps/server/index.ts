@@ -245,21 +245,18 @@ app.post("/api/btc", async (req: Request, res: Response) => {
  */
 app.post("/api/solana/premium", async (req: Request, res: Response) => {
   try {
+    // Fetch SOL price history from CoinGecko
+    const solData = await fetchSolPriceHistory();
+
     return res.json({
       success: true,
-      data: {
-        message: "Payment received successfully on Solana!",
-        network: "solana",
-        paymentToken: "USDC",
-        amount: SOLANA_PAYMENT_AMOUNT,
-        timestamp: new Date().toISOString(),
-      },
+      data: solData,
     });
   } catch (error) {
-    console.error("Error processing Solana payment:", error);
+    console.error("Error fetching SOL data:", error);
     return res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : "Failed to process Solana payment",
+      error: error instanceof Error ? error.message : "Failed to fetch SOL data",
     });
   }
 });
@@ -547,6 +544,81 @@ async function fetchBtcPriceHistory() {
   }
 }
 
+/**
+ * Fetch SOL price history from CoinGecko
+ *
+ * @returns Promise with SOL price history data
+ */
+async function fetchSolPriceHistory() {
+  try {
+    // Fetch SOL OHLCV data for the last 24 hours (minute intervals)
+    const url =
+      "https://pro-api.coingecko.com/api/v3/coins/solana/ohlc?vs_currency=usd&days=1&precision=2";
+
+    console.log("Fetching SOL price history from CoinGecko...");
+
+    const response = await fetch(url, {
+      headers: {
+        "x-cg-pro-api-key": COINGECKO_API_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("CoinGecko API error:", response.status, errorText);
+      throw new Error(`CoinGecko API error: ${response.status}`);
+    }
+
+    const data = (await response.json()) as number[][];
+
+    // Validate data
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error("Invalid or empty price data from CoinGecko");
+    }
+
+    // Data format: [[timestamp, open, high, low, close], ...]
+    const priceHistory = data.map((item: number[]) => ({
+      timestamp: item[0],
+      open: item[1],
+      high: item[2],
+      low: item[3],
+      close: item[4],
+    }));
+
+    // Calculate statistics
+    const prices = priceHistory.map(
+      (p: { timestamp: number; open: number; high: number; low: number; close: number }) => p.close,
+    );
+
+    if (prices.length === 0) {
+      throw new Error("No price data available");
+    }
+
+    const currentPrice = prices[prices.length - 1];
+    const dayStartPrice = prices[0];
+    const highPrice = Math.max(...prices);
+    const lowPrice = Math.min(...prices);
+    const priceChange = currentPrice - dayStartPrice;
+    const priceChangePercent = ((priceChange / dayStartPrice) * 100).toFixed(2);
+
+    return {
+      symbol: "SOL",
+      name: "Solana",
+      currentPrice: currentPrice,
+      priceChange: priceChange,
+      priceChangePercent: priceChangePercent,
+      high24h: highPrice,
+      low24h: lowPrice,
+      priceHistory: priceHistory,
+      dataPoints: priceHistory.length,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error("Error fetching SOL price history:", error);
+    throw error;
+  }
+}
+
 // Global Express error handler (must be last middleware)
 app.use((err: Error, req: Request, res: Response, next: (err: Error) => void) => {
   console.error("❌ Express error handler caught:", err);
@@ -585,7 +657,7 @@ server.listen(PORT, () => {
   console.log("   POST /api/btc               - BTC premium data (0.01 USDC)");
   console.log("   POST /api/solana/premium    - Solana premium (0.01 USDC on Solana)");
   console.log("\n💎 Premium Data Includes:");
-  console.log("   • 24-hour ETH/BTC price history (OHLC data)");
+  console.log("   • 24-hour ETH/BTC/SOL price history (OHLC data)");
   console.log("   • Current price & price change");
   console.log("   • 24h high/low prices");
   console.log("   • Historical data points");
