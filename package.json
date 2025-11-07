@@ -15,6 +15,11 @@
     "format": "pnpm --filter anyspend-server format && pnpm --filter anyspend-client format"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "dotenv": "^16.6.1",
+    "tsx": "^4.20.6"
+  },
+  "dependencies": {
+    "@solana/wallet-adapter-base": "^0.9.27"
   }
 }
