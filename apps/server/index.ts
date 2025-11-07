@@ -2,6 +2,7 @@ import { paymentMiddleware, SolanaAddress } from "@b3dotfun/anyspend-x402-expres
 import cors from "cors";
 import dotenv from "dotenv";
 import express, { Request, Response } from "express";
+import http from 'http';
 import { Address } from "viem";
 
 // Load environment variables
@@ -44,12 +45,13 @@ const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY!;
 const SIMDUNE_API_KEY = process.env.SIMDUNE_API_KEY!;
 
 // Solana Configuration
-const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || "https://solana-rpc.publicnode.com";
 const SOLANA_USDC_MINT =
   process.env.SOLANA_USDC_MINT || "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SOLANA_PAYMENT_AMOUNT = process.env.SOLANA_PAYMENT_AMOUNT || "10000"; // 0.01 USDC (6 decimals)
 const SOLANA_PAYTO_ADDRESS =
-  (process.env.SOLANA_PAYTO_ADDRESS as SolanaAddress) || ("8Bw4C9cgFvMSsH3bdqJ1hpWPNdxknrawBPGzrHuYZR32" as SolanaAddress);
+  (process.env.SOLANA_PAYTO_ADDRESS as SolanaAddress) ||
+  ("8Bw4C9cgFvMSsH3bdqJ1hpWPNdxknrawBPGzrHuYZR32" as SolanaAddress);
 
 // Apply payment middleware to protected routes
 app.use(
@@ -559,8 +561,12 @@ app.use((err: Error, req: Request, res: Response, next: (err: Error) => void) =>
   });
 });
 
-// Start server
-app.listen(PORT, () => {
+// Start server with increased header size limit for Solana transactions
+const server = http.createServer({
+  maxHeaderSize: 32768, // 32KB - enough for large Solana transaction headers
+}, app);
+
+server.listen(PORT, () => {
   console.log("\n🚀 AnySpend Express Server with CoinGecko Premium Data");
   console.log("========================================================");
   console.log(`   Server running on: http://localhost:${PORT}`);
@@ -589,6 +595,7 @@ app.listen(PORT, () => {
   console.log(`   • USDC Mint: ${SOLANA_USDC_MINT}`);
   console.log(`   • Payment Amount: ${SOLANA_PAYMENT_AMOUNT} (0.01 USDC)`);
   console.log(`   • Pay To Address: ${SOLANA_PAYTO_ADDRESS}`);
+  console.log(`   • Max Header Size: 32KB (for Solana transactions)`);
   console.log("\n💡 To test:");
   console.log("   Use the React client at http://localhost:3000\n");
 });
