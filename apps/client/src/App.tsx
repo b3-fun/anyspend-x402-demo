@@ -86,6 +86,9 @@ function App() {
   }>({ stage: "idle", message: "" });
   const [dataType, setDataType] = useState<"eth" | "btc">("eth");
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [networkType, setNetworkType] = useState<"ETH" | "SOL" | null>(null);
+  const [showNetworkSelector, setShowNetworkSelector] = useState(true);
+  const [showCodeExample, setShowCodeExample] = useState(false);
 
   // Set default preset token when connected (default to B3)
   useEffect(() => {
@@ -799,119 +802,249 @@ function App() {
   const fetchBtcData = () => fetchData("btc");
 
   return (
-    <div className="app">
+    <div className={`app ${networkType === "SOL" ? "theme-solana" : ""}`}>
       <div className="container">
-        {/* Demo Banner */}
-        <div className="demo-banner">
-          <div className="demo-banner-content">
-            <span className="demo-badge">DEMO</span>
-            <p className="demo-text">
-              This is a demo application showcasing <strong>x402</strong> - Pay
-              with any token for HTTP APIs
-            </p>
-            <a
-              href="https://anyspend.com/x402"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="demo-link"
-            >
-              Learn More →
-            </a>
-          </div>
-        </div>
-
-        {/* Header with Wallet Status */}
-        <div className="header">
-          <div className="header-content">
-            <div className="logo-section">
-              <img
-                src="https://cdn.b3.fun/anyspend-logo-brand.svg"
-                alt="AnySpend"
-                className="logo"
-              />
-              <div className="logo-text">
-                <p className="subtitle">
-                  Premium ETH price data - Pay with any token
+        {/* Network Selection Modal */}
+        {showNetworkSelector && !networkType && (
+          <div className="modal-overlay">
+            <div className="modal network-selector-modal">
+              <div className="modal-header">
+                <h2>🌐 Select Network</h2>
+                <p style={{ marginTop: "0.5rem", fontSize: "0.9rem", opacity: 0.8 }}>
+                  Choose which blockchain network to use for this demo
                 </p>
               </div>
-            </div>
-            <div className="wallet-section">
-              {!isConnected ? (
-                <div className="connector-buttons-header">
+              <div className="modal-body">
+                <div className="network-selection-grid">
                   <button
-                    onClick={() => setShowWalletModal(true)}
-                    className="button button-small"
+                    className="network-selection-card"
+                    onClick={() => {
+                      setNetworkType("ETH");
+                      setShowNetworkSelector(false);
+                    }}
                   >
-                    Connect Wallet
+                    <div className="network-icon">
+                      <img
+                        src="https://cdn.b3.fun/ethereum.svg"
+                        alt="Ethereum"
+                        style={{ width: "80px", height: "80px" }}
+                      />
+                    </div>
+                    <h3>EVM Chains</h3>
+                    <p className="network-description">
+                      Use Ethereum, Base, Polygon, Arbitrum, BSC and other EVM-compatible chains
+                    </p>
+                    <div className="network-features">
+                      <span className="feature-tag">🔗 Multi-chain</span>
+                      <span className="feature-tag">💰 Any ERC-20 token</span>
+                    </div>
+                  </button>
+
+                  <button
+                    className="network-selection-card"
+                    onClick={() => {
+                      setNetworkType("SOL");
+                      setShowNetworkSelector(false);
+                    }}
+                  >
+                    <div className="network-icon">
+                      <img
+                        src="https://cdn.b3.fun/solana-logo.png"
+                        alt="Solana"
+                        style={{ width: "80px", height: "80px" }}
+                      />
+                    </div>
+                    <h3>Solana</h3>
+                    <p className="network-description">
+                      Use Solana mainnet with USDC payments
+                    </p>
+                    <div className="network-features">
+                      <span className="feature-tag">⚡ Fast & Cheap</span>
+                      <span className="feature-tag">💵 USDC payments</span>
+                    </div>
                   </button>
                 </div>
-              ) : (
-                <div className="wallet-header-info">
-                  <span className="status-badge">
-                    ✅ {address?.slice(0, 6)}...{address?.slice(-4)}
-                    {chain?.name && (
-                      <span style={{ marginLeft: "8px", fontSize: "0.85em" }}>
-                        ({chain.name})
-                      </span>
-                    )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Demo Banner */}
+        {networkType && (
+          <div className="demo-banner">
+            <div className="demo-banner-content">
+              <span className="demo-badge">DEMO</span>
+              <p className="demo-text">
+                This is a demo application showcasing <strong>x402</strong> - Pay
+                with any token for HTTP APIs
+                {networkType && (
+                  <span style={{ marginLeft: "0.5rem" }}>
+                    • Using <strong>{networkType === "ETH" ? "EVM Chains" : "Solana"}</strong>
                   </span>
-                  <button
-                    onClick={() => disconnect()}
-                    className="button button-small button-secondary"
-                  >
-                    Disconnect
-                  </button>
+                )}
+              </p>
+              <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                <button
+                  onClick={() => {
+                    setNetworkType(null);
+                    setShowNetworkSelector(true);
+                  }}
+                  className="demo-link change-network-btn"
+                >
+                  <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                    </svg>
+                    Change Network
+                  </span>
+                </button>
+                <a
+                  href="https://anyspend.com/x402"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="demo-link"
+                >
+                  Learn More →
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Header with Wallet Status */}
+        {networkType && (
+          <div className="header">
+            <div className="header-content">
+              <div className="logo-section">
+                <img
+                  src="https://cdn.b3.fun/anyspend-logo-brand.svg"
+                  alt="AnySpend"
+                  className="logo"
+                />
+                <div className="logo-text">
+                  <p className="subtitle">
+                    {networkType === "ETH"
+                      ? "Premium ETH price data - Pay with any token"
+                      : "Premium data on Solana - Pay with USDC"}
+                  </p>
                 </div>
-              )}
+              </div>
+              <div className="wallet-section">
+                {networkType === "ETH" ? (
+                  // EVM Wallet Connection
+                  !isConnected ? (
+                    <div className="connector-buttons-header">
+                      <button
+                        onClick={() => setShowWalletModal(true)}
+                        className="button button-small"
+                      >
+                        Connect Wallet
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="wallet-header-info">
+                      <span className="status-badge">
+                        ✅ {address?.slice(0, 6)}...{address?.slice(-4)}
+                        {chain?.name && (
+                          <span style={{ marginLeft: "8px", fontSize: "0.85em" }}>
+                            ({chain.name})
+                          </span>
+                        )}
+                      </span>
+                      <button
+                        onClick={() => disconnect()}
+                        className="button button-small button-secondary"
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                  )
+                ) : (
+                  // Solana Wallet Connection Placeholder
+                  <div className="connector-buttons-header">
+                    <button
+                      onClick={() => alert("Solana wallet connection coming soon!")}
+                      className="button button-small"
+                    >
+                      Connect Solana Wallet
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Main Action Cards */}
-        <div className="card action-card">
-          <div className="action-content">
-            <div className="action-text">
-              <h2>📈 ETH Price History</h2>
-              <p className="subtitle">
-                Get 24-hour ETH price history with OHLC data from CoinGecko
-              </p>
+        {/* EVM Main Action Cards */}
+        {networkType === "ETH" && (
+          <>
+            <div className="card action-card">
+              <div className="action-content">
+                <div className="action-text">
+                  <h2>📈 ETH Price History</h2>
+                  <p className="subtitle">
+                    Get 24-hour ETH price history with OHLC data from CoinGecko
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setDataType("eth");
+                    openPaymentModal();
+                  }}
+                  disabled={loading}
+                  className="button button-large"
+                >
+                  📊 Get ETH Data
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => {
-                setDataType("eth");
-                openPaymentModal();
-              }}
-              disabled={loading}
-              className="button button-large"
-            >
-              📊 Get ETH Data
-            </button>
-          </div>
-        </div>
 
-        <div className="card action-card">
-          <div className="action-content">
-            <div className="action-text">
-              <h2>₿ BTC Price History</h2>
-              <p className="subtitle">
-                Get 24-hour BTC price history with OHLC data - Only 0.01 USDC!
-              </p>
+            <div className="card action-card">
+              <div className="action-content">
+                <div className="action-text">
+                  <h2>₿ BTC Price History</h2>
+                  <p className="subtitle">
+                    Get 24-hour BTC price history with OHLC data - Only 0.01 USDC!
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setDataType("btc");
+                    openPaymentModal();
+                  }}
+                  disabled={loading}
+                  className="button button-large"
+                >
+                  ₿ Get BTC Data
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => {
-                setDataType("btc");
-                openPaymentModal();
-              }}
-              disabled={loading}
-              className="button button-large"
-            >
-              ₿ Get BTC Data
-            </button>
-          </div>
-        </div>
+          </>
+        )}
 
-        {/* Wallet Selection Modal */}
-        {showWalletModal && (
+        {/* Solana Main Action Card */}
+        {networkType === "SOL" && (
+          <div className="card action-card">
+            <div className="action-content">
+              <div className="action-text">
+                <h2>◎ Solana Premium Data</h2>
+                <p className="subtitle">
+                  Access premium data on Solana - Pay with USDC (0.01 USDC)
+                </p>
+              </div>
+              <button
+                onClick={() => alert("Solana payment coming soon!")}
+                disabled={loading}
+                className="button button-large"
+              >
+                ◎ Get Premium Data
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* EVM Wallet Selection Modal */}
+        {networkType === "ETH" && showWalletModal && (
           <div
             className="modal-overlay"
             onClick={() => setShowWalletModal(false)}
@@ -965,8 +1098,8 @@ function App() {
           </div>
         )}
 
-        {/* Payment Modal */}
-        {showPaymentModal && (
+        {/* EVM Payment Modal */}
+        {networkType === "ETH" && showPaymentModal && (
           <div
             className="modal-overlay"
             onClick={() => setShowPaymentModal(false)}
@@ -1188,8 +1321,8 @@ function App() {
           </div>
         )}
 
-        {/* Loading Modal - Separate from payment configuration */}
-        {loading && (
+        {/* EVM Loading Modal - Separate from payment configuration */}
+        {networkType === "ETH" && loading && (
           <div className="modal-overlay">
             <div className="modal loading-modal">
               <div className="loading-modal-content">
@@ -1588,7 +1721,16 @@ function App() {
         {/* Code Example Section */}
         <div className="code-example-section">
           <div className="code-example-header">
-            <h2>💻 How to Pay with Any Token</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2>💻 How to Pay with Any Token</h2>
+              <button
+                onClick={() => setShowCodeExample(!showCodeExample)}
+                className="button button-small button-secondary"
+                style={{ minWidth: "auto" }}
+              >
+                {showCodeExample ? "Hide Code ▲" : "Show Code ▼"}
+              </button>
+            </div>
             <p className="code-example-description">
               Use the x402-fetch library to enable payments with any token in
               your application. This example shows how to pay with B3 token on
@@ -1596,7 +1738,8 @@ function App() {
             </p>
           </div>
 
-          <div className="code-example-card">
+          {showCodeExample && (
+            <div className="code-example-card">
             <div className="code-example-tabs">
               <span className="code-tab active">TypeScript</span>
             </div>
@@ -1676,6 +1819,7 @@ main();`}</code>
               </a>
             </div>
           </div>
+          )}
         </div>
 
         {/* Footer */}

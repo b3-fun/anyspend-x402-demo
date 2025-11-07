@@ -1,8 +1,8 @@
+import { paymentMiddleware, SolanaAddress } from "@b3dotfun/anyspend-x402-express";
 import cors from "cors";
 import dotenv from "dotenv";
 import express, { Request, Response } from "express";
 import { Address } from "viem";
-import { paymentMiddleware } from "@b3dotfun/anyspend-x402-express";
 
 // Load environment variables
 dotenv.config();
@@ -29,7 +29,7 @@ app.use(express.json());
 const PAYTO_ADDRESS =
   (process.env.PAYTO_ADDRESS as Address) || "0xB3B32F9f8827D4634fE7d973Fa1034Ec9fdDB3B3";
 const NETWORK = (process.env.NETWORK as "base-sepolia" | "base") || "base";
-const PAYMENT_AMOUNT_USD = process.env.PAYMENT_AMOUNT_USD || "100000000"; // Default 100 USDC (100 * 10^6)
+const PAYMENT_AMOUNT_USD = process.env.PAYMENT_AMOUNT_USD || "1000"; // Default 0.001 USDC (0.001 * 10^6)
 const FACILITATOR_URL = (process.env.FACILITATOR_URL ||
   "https://mainnet.anyspend.com/x402") as `${string}://${string}`;
 
@@ -42,6 +42,14 @@ if (!process.env.SIMDUNE_API_KEY) {
 }
 const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY!;
 const SIMDUNE_API_KEY = process.env.SIMDUNE_API_KEY!;
+
+// Solana Configuration
+const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+const SOLANA_USDC_MINT =
+  process.env.SOLANA_USDC_MINT || "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const SOLANA_PAYMENT_AMOUNT = process.env.SOLANA_PAYMENT_AMOUNT || "10000"; // 0.01 USDC (6 decimals)
+const SOLANA_PAYTO_ADDRESS =
+  (process.env.SOLANA_PAYTO_ADDRESS as SolanaAddress) || ("8Bw4C9cgFvMSsH3bdqJ1hpWPNdxknrawBPGzrHuYZR32" as SolanaAddress);
 
 // Apply payment middleware to protected routes
 app.use(
@@ -101,6 +109,31 @@ app.use(
         network: NETWORK,
         config: {
           description: "Access to premium BTC price history data",
+          mimeType: "application/json",
+        },
+      },
+    },
+    {
+      url: FACILITATOR_URL,
+    },
+  ),
+);
+
+app.use(
+  paymentMiddleware(
+    SOLANA_PAYTO_ADDRESS,
+    {
+      "POST /api/solana/premium": {
+        price: {
+          amount: SOLANA_PAYMENT_AMOUNT,
+          asset: {
+            address: SOLANA_USDC_MINT,
+            decimals: 6,
+          },
+        },
+        network: "solana",
+        config: {
+          description: "Access to Solana premium data via USDC payment",
           mimeType: "application/json",
         },
       },
@@ -201,6 +234,35 @@ app.post("/api/btc", async (req: Request, res: Response) => {
 });
 
 /**
+ * Solana premium API endpoint - Protected by payment middleware (USDC on Solana)
+ * The payment middleware automatically handles:
+ * - Returning 402 when no payment header is provided
+ * - Decoding and verifying the payment
+ * - Settling the payment via remote facilitator
+ * - Adding X-PAYMENT-RESPONSE header to successful responses
+ */
+app.post("/api/solana/premium", async (req: Request, res: Response) => {
+  try {
+    return res.json({
+      success: true,
+      data: {
+        message: "Payment received successfully on Solana!",
+        network: "solana",
+        paymentToken: "USDC",
+        amount: SOLANA_PAYMENT_AMOUNT,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error("Error processing Solana payment:", error);
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to process Solana payment",
+    });
+  }
+});
+
+/**
  * Free API endpoint - No payment required
  */
 app.get("/api/free", (req: Request, res: Response) => {
@@ -262,7 +324,7 @@ app.get("/api/balances/:address", async (req: Request, res: Response) => {
 
     // Calculate USD values and sort by value
     const tokensWithValue = balances
-      .map((balance: any) => {
+      .map((balance: SimDuneBalance) => {
         try {
           const rawAmount = balance.amount || "0";
           const decimals = balance.decimals || 18;
@@ -303,8 +365,19 @@ app.get("/api/balances/:address", async (req: Request, res: Response) => {
           return null;
         }
       })
-      .filter((token: any) => token !== null && token.valueUsd > 0)
-      .sort((a: any, b: any) => b.valueUsd - a.valueUsd)
+      .filter(
+        (
+          token,
+        ): token is {
+          address: string;
+          symbol: string;
+          name: string;
+          decimals: number;
+          balance: string;
+          valueUsd: number;
+        } => token !== null && token.valueUsd > 0,
+      )
+      .sort((a, b) => b.valueUsd - a.valueUsd)
       .slice(0, 5); // Top 5
 
     console.log(`Returning ${tokensWithValue.length} tokens with value`);
@@ -324,6 +397,8 @@ app.get("/api/balances/:address", async (req: Request, res: Response) => {
 
 /**
  * Fetch ETH price history from CoinGecko
+ *
+ * @returns Promise with ETH price history data
  */
 async function fetchEthPriceHistory() {
   try {
@@ -362,7 +437,9 @@ async function fetchEthPriceHistory() {
     }));
 
     // Calculate statistics
-    const prices = priceHistory.map((p: any) => p.close);
+    const prices = priceHistory.map(
+      (p: { timestamp: number; open: number; high: number; low: number; close: number }) => p.close,
+    );
 
     if (prices.length === 0) {
       throw new Error("No price data available");
@@ -395,6 +472,8 @@ async function fetchEthPriceHistory() {
 
 /**
  * Fetch BTC price history from CoinGecko
+ *
+ * @returns Promise with BTC price history data
  */
 async function fetchBtcPriceHistory() {
   try {
@@ -433,7 +512,9 @@ async function fetchBtcPriceHistory() {
     }));
 
     // Calculate statistics
-    const prices = priceHistory.map((p: any) => p.close);
+    const prices = priceHistory.map(
+      (p: { timestamp: number; open: number; high: number; low: number; close: number }) => p.close,
+    );
 
     if (prices.length === 0) {
       throw new Error("No price data available");
@@ -465,7 +546,7 @@ async function fetchBtcPriceHistory() {
 }
 
 // Global Express error handler (must be last middleware)
-app.use((err: any, req: Request, res: Response, next: any) => {
+app.use((err: Error, req: Request, res: Response, next: (err: Error) => void) => {
   console.error("❌ Express error handler caught:", err);
 
   if (res.headersSent) {
@@ -485,7 +566,7 @@ app.listen(PORT, () => {
   console.log(`   Server running on: http://localhost:${PORT}`);
   console.log(`   Facilitator URL: ${FACILITATOR_URL}`);
   console.log(`   Network: ${NETWORK}`);
-  console.log(`   Payment USDC Amount: 0.001 USDC (1 * 10^6) to api/usdc/premium`);
+  console.log(`   Payment USDC Amount: 0.001 USDC (1000) to api/usdc/premium`);
   console.log(`   Payment B3 Amount: 100 B3 tokens (100 * 10^18) to api/b3/premium`);
   console.log(`   Payment for BTC: 0.01 USDC (10000 * 10^-6) to api/btc`);
   console.log(`   Pay To Address: ${PAYTO_ADDRESS}`);
@@ -493,14 +574,21 @@ app.listen(PORT, () => {
   console.log("   GET  /health                - Health check (free)");
   console.log("   GET  /api/free              - Free endpoint (no payment)");
   console.log("   GET  /api/balances/:address - Token balances (free)");
-  console.log("   POST /api/b3/premium       - B3 premium data (requires payment)");
-  console.log("   POST /api/usdc/premium     - USDC premium data (requires payment)");
-  console.log("   POST /api/btc              - BTC premium data (0.01 USDC)");
+  console.log("   POST /api/b3/premium        - B3 premium data (requires payment)");
+  console.log("   POST /api/usdc/premium      - USDC premium data (requires payment)");
+  console.log("   POST /api/btc               - BTC premium data (0.01 USDC)");
+  console.log("   POST /api/solana/premium    - Solana premium (0.01 USDC on Solana)");
   console.log("\n💎 Premium Data Includes:");
   console.log("   • 24-hour ETH/BTC price history (OHLC data)");
   console.log("   • Current price & price change");
   console.log("   • 24h high/low prices");
   console.log("   • Historical data points");
+  console.log("\n🌐 Solana Configuration:");
+  console.log(`   • Network: solana (mainnet)`);
+  console.log(`   • RPC URL: ${SOLANA_RPC_URL}`);
+  console.log(`   • USDC Mint: ${SOLANA_USDC_MINT}`);
+  console.log(`   • Payment Amount: ${SOLANA_PAYMENT_AMOUNT} (0.01 USDC)`);
+  console.log(`   • Pay To Address: ${SOLANA_PAYTO_ADDRESS}`);
   console.log("\n💡 To test:");
   console.log("   Use the React client at http://localhost:3000\n");
 });
