@@ -30,6 +30,9 @@ importers:
       '@b3dotfun/anyspend-x402-fetch':
         specifier: ^0.2.4
         version: 0.2.4(@react-native-async-storage/async-storage@1.24.0(react-native@0.82.1(@babel/core@7.28.5)(@types/react@18.3.26)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10)))(@solana/sysvars@3.0.3(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3))(@tanstack/query-core@5.90.5)(@tanstack/react-query@5.90.5(react@18.3.1))(@types/react@18.3.26)(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(react-native@0.82.1(@babel/core@7.28.5)(@types/react@18.3.26)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10))(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@b3dotfun/anyspend-x402-solana-wallet-adapter':
+        specifier: ^0.1.0
+        version: 0.1.0(476ab82122e68a8017498a7a5d10d5aa)
       '@b3dotfun/anyspend-x402-token-compat':
         specifier: ^0.1.2
         version: 0.1.2
@@ -169,6 +172,16 @@ packages:
 
   '@b3dotfun/anyspend-x402-fetch@0.2.4':
     resolution: {integrity: sha512-/ykNG/IJli3yOnncAVwAsFQ3C6XAFUk898Gv+hgbPYfuyvIQXZWQX+BOPrWcTQ+RWrf9me3f45Ul0CVWx7tiTg==}
+
+  '@b3dotfun/anyspend-x402-solana-wallet-adapter@0.1.0':
+    resolution: {integrity: sha512-ncV7mLiVQJs1sfoHB/FMMjqSzZLz30+Y/8c3oNCC4posHDNpzT5JWWKC2GyxaJJRQUr8UWQhsWjkokVYyb1UAw==}
+    peerDependencies:
+      '@solana/kit': ^2.3.0
+      '@solana/wallet-adapter-base': ^0.9.0
+      '@solana/wallet-adapter-react': ^0.15.0
+      '@solana/wallet-adapter-react-ui': ^0.9.0
+      '@solana/web3.js': ^1.90.0
+      react: ^18.0.0
 
   '@b3dotfun/anyspend-x402-token-compat@0.1.2':
     resolution: {integrity: sha512-nmYTwR6WPmGXMJNPmonzWlSDG/dukUmJlq6SN9ZVQ1KAKYGUC5stREh1mNoJq3BR3QPvth3uIQ72NjeUXNh4hQ==}
@@ -6378,6 +6391,53 @@ snapshots:
       - immer
       - ioredis
       - react
+      - react-native
+      - supports-color
+      - typescript
+      - uploadthing
+      - utf-8-validate
+      - ws
+
+  '@b3dotfun/anyspend-x402-solana-wallet-adapter@0.1.0(476ab82122e68a8017498a7a5d10d5aa)':
+    dependencies:
+      '@b3dotfun/anyspend-x402': 0.2.4(@react-native-async-storage/async-storage@1.24.0(react-native@0.82.1(@babel/core@7.28.5)(@types/react@18.3.26)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10)))(@solana/sysvars@3.0.3(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3))(@tanstack/query-core@5.90.5)(@tanstack/react-query@5.90.5(react@18.3.1))(@types/react@18.3.26)(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(react-native@0.82.1(@babel/core@7.28.5)(@types/react@18.3.26)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10))(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@solana/kit': 3.0.3(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@solana/wallet-adapter-base': 0.9.27(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10))
+      '@solana/wallet-adapter-react': 0.15.39(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10))(bs58@5.0.0)(fastestsmallesttextencoderdecoder@1.0.22)(react-native@0.82.1(@babel/core@7.28.5)(@types/react@18.3.26)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10))(react@18.3.1)(typescript@5.9.3)
+      '@solana/wallet-adapter-react-ui': 0.9.39(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10))(bs58@5.0.0)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@18.3.1(react@18.3.1))(react-native@0.82.1(@babel/core@7.28.5)(@types/react@18.3.26)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10))(react@18.3.1)(typescript@5.9.3)
+      '@solana/web3.js': 1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)
+      react: 18.3.1
+    transitivePeerDependencies:
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
+      - '@azure/storage-blob'
+      - '@capacitor/preferences'
+      - '@deno/kv'
+      - '@netlify/blobs'
+      - '@planetscale/database'
+      - '@react-native-async-storage/async-storage'
+      - '@solana/sysvars'
+      - '@tanstack/query-core'
+      - '@tanstack/react-query'
+      - '@types/react'
+      - '@upstash/redis'
+      - '@vercel/blob'
+      - '@vercel/functions'
+      - '@vercel/kv'
+      - aws4fetch
+      - bufferutil
+      - db0
+      - debug
+      - encoding
+      - expo-auth-session
+      - expo-crypto
+      - expo-web-browser
+      - fastestsmallesttextencoderdecoder
+      - immer
+      - ioredis
       - react-native
       - supports-color
       - typescript
