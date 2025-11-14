@@ -11,8 +11,8 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
   },
   "dependencies": {
-    "@b3dotfun/anyspend-x402": "^0.2.4",
-    "@b3dotfun/anyspend-x402-fetch": "^0.2.4",
+    "@b3dotfun/anyspend-x402": "^0.2.5",
+    "@b3dotfun/anyspend-x402-fetch": "^0.2.5",
     "@b3dotfun/anyspend-x402-solana-wallet-adapter": "^0.1.0",
     "@b3dotfun/anyspend-x402-token-compat": "^0.1.2",
     "@solana/wallet-adapter-react": "^0.15.39",
